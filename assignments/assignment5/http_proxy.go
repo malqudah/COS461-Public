@@ -18,6 +18,8 @@
  )
 
  func handleConnection(conn net.Conn) {
+
+	defer conn.Close()
 	
 	reader := bufio.NewReader(conn)
 	request, err := http.ReadRequest(reader)
@@ -33,9 +35,7 @@
 		conn.Write(newResponse)
 		return
 	}
-
 	
-
  }
 
  func main() {
@@ -45,13 +45,13 @@
 	  }
 	server_port := os.Args[1]  
 
-	ln, err := net.Listen("tcp", server_port)
+	ln, err := net.Listen("tcp", ":" + server_port)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	fmt.Println("Listening on port %s", server_port)
+	fmt.Println("Listening on port: " + server_port)
 
 	for {
 		conn, err := ln.Accept()
