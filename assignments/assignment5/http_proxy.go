@@ -1,26 +1,27 @@
 /*****************************************************************************
- * http_proxy.go                                                                 
+ * http_proxy.go
  * Names: Mohammad Alqudah, Jonathan Salama
  * NetIds: malqudah, jjsalama
  *****************************************************************************/
 
- // TODO: implement an HTTP proxy
- 
- package main
+// TODO: implement an HTTP proxy
 
- import (
-	 "net"
-	 "fmt"
-	 "os"
-	 "log"
-	 "bufio"
-	 "net/http"
- )
+package main
 
- func handleConnection(conn net.Conn) {
+import (
+	"bufio"
+	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+)
+
+func handleConnection(conn net.Conn) {
 
 	defer conn.Close()
-	
+
 	reader := bufio.NewReader(conn)
 	request, err := http.ReadRequest(reader)
 
@@ -35,17 +36,40 @@
 		conn.Write(newResponse)
 		return
 	}
-	
- }
 
- func main() {
+	client := &http.Client{}
+	// newRequest, err := http.NewRequest(request.Method, request.URL.String(), request.Body)
+
+	// newRequest.Header = request.Header
+
+	newURL, err := url.Parse(request.RequestURI)
+	request.URL = newURL
+	fmt.Println(newURL.Path)
+	request.RequestURI = ""
+	request.Header.Add("Host", request.Host)
+	request.Header.Add("Connection", "close")
+
+	resp, err := client.Do(request)
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
+	defer resp.Body.Close()
+	fmt.Println(request)
+	fmt.Println()
+	resp.Write(os.Stdout)
+	resp.Write(conn)
+	return
+}
+
+func main() {
 
 	if len(os.Args) != 2 {
 		log.Fatal("Usage: ./server-go [server port]")
-	  }
-	server_port := os.Args[1]  
+	}
+	server_port := os.Args[1]
 
-	ln, err := net.Listen("tcp", ":" + server_port)
+	ln, err := net.Listen("tcp", ":"+server_port)
 
 	if err != nil {
 		log.Fatal(err)
@@ -63,4 +87,4 @@
 		go handleConnection(conn)
 	}
 
- }
+}
