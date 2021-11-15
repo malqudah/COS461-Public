@@ -10,12 +10,14 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 )
 
 func handleConnection(conn net.Conn) {
@@ -27,7 +29,8 @@ func handleConnection(conn net.Conn) {
 
 	// come back here
 	if err != nil {
-		log.Fatal(err)
+		newResponse := []byte("HTTP 500 Internal Error")
+		conn.Write(newResponse)
 		return
 	}
 
@@ -37,27 +40,31 @@ func handleConnection(conn net.Conn) {
 		return
 	}
 
-	client := &http.Client{}
-	// newRequest, err := http.NewRequest(request.Method, request.URL.String(), request.Body)
-
-	// newRequest.Header = request.Header
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return errors.New("net/http: use last response")
+		},
+	}
 
 	newURL, err := url.Parse(request.RequestURI)
+	if err != nil {
+		newResponse := []byte("HTTP 500 Internal Error")
+		conn.Write(newResponse)
+		return
+	}
 	request.URL = newURL
-	fmt.Println(newURL.Path)
 	request.RequestURI = ""
 	request.Header.Add("Host", request.Host)
 	request.Header.Add("Connection", "close")
 
 	resp, err := client.Do(request)
 	if err != nil {
-		log.Fatal(err)
-		return
+		if !strings.Contains(err.Error(), "net/http: use last response") {
+			newResponse := []byte("HTTP 500 Internal Error")
+			conn.Write(newResponse)
+			return
+		}
 	}
-	defer resp.Body.Close()
-	fmt.Println(request)
-	fmt.Println()
-	resp.Write(os.Stdout)
 	resp.Write(conn)
 	return
 }
