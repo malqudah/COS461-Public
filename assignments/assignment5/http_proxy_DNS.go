@@ -19,11 +19,11 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/html"
 	"net/http"
 	"net/url"
 	"os"
-
-	"golang.org/x/net/html"
+	"strings"
 )
 
 func handleConnection(conn net.Conn) {
@@ -94,7 +94,7 @@ func handleConnection(conn net.Conn) {
 	}
 	sresponse.Write(conn)
 	sconn.Close()
-
+	go DNS(sresponse.Body)
 	return
 }
 
@@ -106,15 +106,17 @@ func DNS(r io.Reader) {
 		tt := z.Next()
 		switch tt {
 		case html.ErrorToken:
-			return z.Err()
+			return
 		case html.StartTagToken:
 			name, hasAttr := z.TagName()
-			if name == 'a' {
+			if string(name) == "a" {
 				if hasAttr {
 					key, val, hasAttr := z.TagAttr()
+					for hasAttr {
 					// need to check start with http
-					if key == "href" {
-						go net.LookupHost(val)
+						if key == "href" && strings.HasPrefix(string(val), "http") {
+							go net.LookupHost(string(val))
+						}
 					}
 				}
 			}

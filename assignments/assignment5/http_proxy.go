@@ -19,8 +19,7 @@ import (
 )
 
 func handleConnection(conn net.Conn) {
-	// comment
-
+	
 	defer conn.Close()
 
 	reader := bufio.NewReader(conn)
