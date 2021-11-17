@@ -33,7 +33,6 @@ func handleConnection(conn net.Conn) {
 	reader := bufio.NewReader(conn)
 	request, err := http.ReadRequest(reader)
 
-	// come back here
 	if err != nil {
 		newResponse := []byte("HTTP 500 Internal Error")
 		conn.Write(newResponse)
@@ -85,7 +84,6 @@ func DNS(r io.Reader) error {
 				if hasAttr {
 					key, val, hasAttr := z.TagAttr()
 					for hasAttr {
-						// need to check start with http
 						if string(key) == "href" && strings.HasPrefix(string(val), "http") {
 							go net.LookupHost(string(val))
 						}
