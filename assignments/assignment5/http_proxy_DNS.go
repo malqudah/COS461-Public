@@ -46,33 +46,6 @@ func handleConnection(conn net.Conn) {
 		return
 	}
 
-	// client := &http.Client{
-	// 	CheckRedirect: func(req *http.Request, via []*http.Request) error {
-	// 		return errors.New("net/http: use last response")
-	// 	},
-	// }
-
-	// newURL, err := url.Parse(request.RequestURI)
-	// if err != nil {
-	// 	newResponse := []byte("HTTP 500 Internal Error")
-	// 	conn.Write(newResponse)
-	// 	return
-	// }
-	// request.URL = newURL
-	// request.RequestURI = ""
-	// request.Header.Add("Host", request.Host)
-	// request.Header.Add("Connection", "close")
-
-	// resp, err := client.Do(request)
-	// if err != nil {
-	// 	if !strings.Contains(err.Error(), "net/http: use last response") {
-	// 		newResponse := []byte("HTTP 500 Internal Error")
-	// 		conn.Write(newResponse)
-	// 		return
-	// 	}
-	// }
-	// resp.Write(conn)
-
 	relativeURL, err := url.Parse(request.URL.Path)
 	if err != nil {
 		log.Fatal(err)
@@ -86,7 +59,6 @@ func handleConnection(conn net.Conn) {
 		log.Fatal(err)
 	}
 	request.Write(sconn)
-	// fmt.Println(request)
 	sreader := bufio.NewReader(sconn)
 	sresponse, err := http.ReadResponse(sreader, request)
 	if err != nil {
@@ -98,7 +70,7 @@ func handleConnection(conn net.Conn) {
 	return
 }
 
-func DNS(r io.Reader) {
+func DNS(r io.Reader) error {
 
 	z := html.NewTokenizer(r)
 
@@ -106,15 +78,15 @@ func DNS(r io.Reader) {
 		tt := z.Next()
 		switch tt {
 		case html.ErrorToken:
-			return
+			return z.Err()
 		case html.StartTagToken:
 			name, hasAttr := z.TagName()
 			if string(name) == "a" {
 				if hasAttr {
 					key, val, hasAttr := z.TagAttr()
 					for hasAttr {
-					// need to check start with http
-						if key == "href" && strings.HasPrefix(string(val), "http") {
+						// need to check start with http
+						if string(key) == "href" && strings.HasPrefix(string(val), "http") {
 							go net.LookupHost(string(val))
 						}
 					}

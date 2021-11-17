@@ -19,7 +19,7 @@ import (
 )
 
 func handleConnection(conn net.Conn) {
-	
+
 	defer conn.Close()
 
 	reader := bufio.NewReader(conn)
@@ -38,27 +38,6 @@ func handleConnection(conn net.Conn) {
 		return
 	}
 
-	// client := &http.Client{
-	// 	CheckRedirect: func(req *http.Request, via []*http.Request) error {
-	// 		return errors.New("net/http: use last response")
-	// 	},
-	// }
-	// if err != nil {
-	// 	newResponse := []byte("HTTP 500 Internal Error")
-	// 	conn.Write(newResponse)
-	// 	return
-	// }
-	// request.RequestURI = ""
-	// resp, err := client.Do(request)
-	// if err != nil {
-	// 	if !strings.Contains(err.Error(), "net/http: use last response") {
-	// 		fmt.Println(err)
-	// 		newResponse := []byte("HTTP 500 Internal Error")
-	// 		conn.Write(newResponse)
-	// 		return
-	// 	}
-	// }
-
 	relativeURL, err := url.Parse(request.URL.Path)
 	if err != nil {
 		log.Fatal(err)
@@ -72,7 +51,6 @@ func handleConnection(conn net.Conn) {
 		log.Fatal(err)
 	}
 	request.Write(sconn)
-	// fmt.Println(request)
 	sreader := bufio.NewReader(sconn)
 	sresponse, err := http.ReadResponse(sreader, request)
 	if err != nil {
