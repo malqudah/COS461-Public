@@ -10,14 +10,12 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 )
 
 func handleConnection(conn net.Conn) {
@@ -40,32 +38,48 @@ func handleConnection(conn net.Conn) {
 		return
 	}
 
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return errors.New("net/http: use last response")
-		},
-	}
+	// client := &http.Client{
+	// 	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	// 		return errors.New("net/http: use last response")
+	// 	},
+	// }
+	// if err != nil {
+	// 	newResponse := []byte("HTTP 500 Internal Error")
+	// 	conn.Write(newResponse)
+	// 	return
+	// }
+	// request.RequestURI = ""
+	// resp, err := client.Do(request)
+	// if err != nil {
+	// 	if !strings.Contains(err.Error(), "net/http: use last response") {
+	// 		fmt.Println(err)
+	// 		newResponse := []byte("HTTP 500 Internal Error")
+	// 		conn.Write(newResponse)
+	// 		return
+	// 	}
+	// }
 
-	newURL, err := url.Parse(request.RequestURI)
+	relativeURL, err := url.Parse(request.URL.Path)
 	if err != nil {
-		newResponse := []byte("HTTP 500 Internal Error")
-		conn.Write(newResponse)
-		return
+		log.Fatal(err)
 	}
-	request.URL = newURL
-	request.RequestURI = ""
-	request.Header.Add("Host", request.Host)
-	request.Header.Add("Connection", "close")
+	request.URL = relativeURL
+	request.Header.Set("Connection", "close")
 
-	resp, err := client.Do(request)
+	hostport := request.Host + ":http"
+	sconn, err := net.Dial("tcp", hostport)
 	if err != nil {
-		if !strings.Contains(err.Error(), "net/http: use last response") {
-			newResponse := []byte("HTTP 500 Internal Error")
-			conn.Write(newResponse)
-			return
-		}
+		log.Fatal(err)
 	}
-	resp.Write(conn)
+	request.Write(sconn)
+	// fmt.Println(request)
+	sreader := bufio.NewReader(sconn)
+	sresponse, err := http.ReadResponse(sreader, request)
+	if err != nil {
+		log.Fatal(err)
+	}
+	sresponse.Write(conn)
+	sconn.Close()
 	return
 }
 

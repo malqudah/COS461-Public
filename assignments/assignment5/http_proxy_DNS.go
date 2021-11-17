@@ -1,5 +1,5 @@
 /*****************************************************************************
- * http_proxy_DNS.go                                                                 
+ * http_proxy_DNS.go
  * Names: Mohammad Alqudah, Jonathan Salama
  * NetIds: malqudah, jjsalama
  *****************************************************************************/
@@ -15,15 +15,15 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
-	"net/html"
+
+	"golang.org/x/net/html"
 )
 
 func handleConnection(conn net.Conn) {
@@ -46,32 +46,55 @@ func handleConnection(conn net.Conn) {
 		return
 	}
 
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return errors.New("net/http: use last response")
-		},
-	}
+	// client := &http.Client{
+	// 	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	// 		return errors.New("net/http: use last response")
+	// 	},
+	// }
 
-	newURL, err := url.Parse(request.RequestURI)
-	if err != nil {
-		newResponse := []byte("HTTP 500 Internal Error")
-		conn.Write(newResponse)
-		return
-	}
-	request.URL = newURL
-	request.RequestURI = ""
-	request.Header.Add("Host", request.Host)
-	request.Header.Add("Connection", "close")
+	// newURL, err := url.Parse(request.RequestURI)
+	// if err != nil {
+	// 	newResponse := []byte("HTTP 500 Internal Error")
+	// 	conn.Write(newResponse)
+	// 	return
+	// }
+	// request.URL = newURL
+	// request.RequestURI = ""
+	// request.Header.Add("Host", request.Host)
+	// request.Header.Add("Connection", "close")
 
-	resp, err := client.Do(request)
+	// resp, err := client.Do(request)
+	// if err != nil {
+	// 	if !strings.Contains(err.Error(), "net/http: use last response") {
+	// 		newResponse := []byte("HTTP 500 Internal Error")
+	// 		conn.Write(newResponse)
+	// 		return
+	// 	}
+	// }
+	// resp.Write(conn)
+
+	relativeURL, err := url.Parse(request.URL.Path)
 	if err != nil {
-		if !strings.Contains(err.Error(), "net/http: use last response") {
-			newResponse := []byte("HTTP 500 Internal Error")
-			conn.Write(newResponse)
-			return
-		}
+		log.Fatal(err)
 	}
-	resp.Write(conn)
+	request.URL = relativeURL
+	request.Header.Set("Connection", "close")
+
+	hostport := request.Host + ":http"
+	sconn, err := net.Dial("tcp", hostport)
+	if err != nil {
+		log.Fatal(err)
+	}
+	request.Write(sconn)
+	// fmt.Println(request)
+	sreader := bufio.NewReader(sconn)
+	sresponse, err := http.ReadResponse(sreader, request)
+	if err != nil {
+		log.Fatal(err)
+	}
+	sresponse.Write(conn)
+	sconn.Close()
+
 	return
 }
 
@@ -97,7 +120,7 @@ func DNS(r io.Reader) {
 			}
 		}
 	}
-	
+
 }
 
 func main() {
