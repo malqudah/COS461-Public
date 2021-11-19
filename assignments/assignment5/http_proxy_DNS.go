@@ -15,15 +15,17 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"log"
 	"net"
-	"net/html"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+
+	"golang.org/x/net/html"
 )
 
 func handleConnection(conn net.Conn) {
@@ -58,40 +60,41 @@ func handleConnection(conn net.Conn) {
 		log.Fatal(err)
 	}
 	request.Write(sconn)
-	sreader := bufio.NewReader(sconn)
-	sresponse, err := http.ReadResponse(sreader, request)
-	if err != nil {
-		log.Fatal(err)
-	}
-	sresponse.Write(conn)
+
+	response := new(bytes.Buffer)
+	io.Copy(response, sconn)
+	dnsReader := strings.NewReader(response.String())
+	go DNS(dnsReader)
+	io.Copy(conn, response)
 	sconn.Close()
-	go DNS(sresponse.Body)
 	return
 }
 
-func DNS(r io.Reader) error {
+func DNS(r io.Reader) {
 
 	z := html.NewTokenizer(r)
-
 	for {
 		tt := z.Next()
-		switch tt {
-		case html.ErrorToken:
-			return z.Err()
-		case html.StartTagToken:
+		if tt == html.ErrorToken {
+			return
+		} else {
 			name, hasAttr := z.TagName()
 			if string(name) == "a" {
 				if hasAttr {
-					key, val, hasAttr := z.TagAttr()
-					for hasAttr {
-						if string(key) == "href" && strings.HasPrefix(string(val), "http") {
-							go net.LookupHost(string(val))
+					var key, val []byte
+					key, val, hasAttr = z.TagAttr()
+					if string(key) == "href" && (string(val[:4]) == "http") {
+						theURL, err := url.Parse(string(val))
+						if err != nil {
+							return
 						}
+						net.LookupHost(theURL.Host)
 					}
 				}
 			}
 		}
 	}
+	return
 
 }
 
